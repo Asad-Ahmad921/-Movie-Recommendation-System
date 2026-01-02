@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MoviesAI | Your Personal Predictor</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        /* Netflix-style fonts and premium variables */
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
+        
+        :root {
+            --netflix-red: #E50914;
+            --netflix-black: #141414;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--netflix-black);
+            color: #ffffff;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        /* Hero banner with custom Netflix-style background */
+        .hero-banner {
+            background: linear-gradient(rgba(0,0,0,0.7), rgba(20,20,20,1)), 
+                        url('https://assets.nflxext.com/ffe/siteui/vlv3/f841d4c7-10e1-40af-bcae-07a3f8dc141a/f6d7434e-d6de-4185-a6d4-c77a2d08737b/IN-en-20220502-popsignuptwoweeks-perspective_alpha_website_medium.jpg');
+            background-size: cover;
+            background-position: center;
+            height: 85vh;
+        }
+
+        /* Netflix movie card zoom effect */
+        .movie-card {
+            transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+            cursor: pointer;
+            opacity: 0; /* Initial state for staggered animation */
+            transform: translateY(30px);
+        }
+
+        .movie-card:hover {
+            transform: scale(1.1) !important;
+            z-index: 50;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.9);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #141414; }
+        ::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--netflix-red); }
+
+        /* Smooth Navbar transition */
+        .nav-scrolled {
+            background-color: var(--netflix-black) !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.7);
+        }
+
+        /* Loading Spinner */
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--netflix-red);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Animation Utility */
+        .fade-in-up {
+            animation: fadeInUp 0.8s ease forwards;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Header Navigation -->
+    <nav id="navbar" class="fixed top-0 w-full z-[100] px-6 md:px-16 py-5 flex items-center justify-between transition-all duration-300 bg-gradient-to-b from-black/90 to-transparent">
+        <div class="flex items-center gap-10">
+            <h1 class="text-3xl font-black text-[#E50914] tracking-tighter cursor-pointer">MOVIES-AI</h1>
+            <ul class="hidden md:flex gap-6 text-sm font-light text-gray-200">
+                <li class="hover:text-white cursor-pointer transition">Home</li>
+                <li class="hover:text-white cursor-pointer transition">TV Shows</li>
+                <li class="text-white font-bold border-b-2 border-red-600 cursor-pointer">Movies</li>
+                <li class="hover:text-white cursor-pointer transition">My List</li>
+            </ul>
+        </div>
+        <div class="flex items-center gap-6">
+            <i class="fa-solid fa-magnifying-glass text-sm cursor-pointer hover:text-red-500 transition"></i>
+            <div class="w-8 h-8 rounded-sm bg-blue-600 overflow-hidden shadow-md">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/0/0b/Netflix-avatar.png" alt="Profile Avatar">
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section with Search Form -->
+    <header class="hero-banner flex flex-col justify-center items-center text-center px-4">
+        <div class="max-w-4xl space-y-8 fade-in-up">
+            <h2 class="text-5xl md:text-8xl font-bold tracking-tight drop-shadow-2xl">Your Personal<br><span class="text-[#E50914]">Movie AI.</span></h2>
+            <p class="text-xl md:text-2xl font-light text-gray-300 max-w-2xl mx-auto">Enter one movie you love, and we'll handle the rest of your watchlist.</p>
+            
+            <!-- Search Form -->
+            <form action="/" method="POST" id="recommendForm" class="w-full max-w-3xl mx-auto mt-10">
+                <div class="flex flex-col md:flex-row items-stretch gap-3 bg-black/40 p-3 rounded-xl backdrop-blur-lg border border-white/10 shadow-2xl">
+                    <div class="relative flex-grow">
+                        <i class="fa-solid fa-clapperboard absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <input 
+                            list="movieTitles"
+                            name="movie_name" 
+                            id="movieInput"
+                            type="text" 
+                            placeholder="Search a movie (e.g., Inception)..."
+                            class="w-full py-4 pl-12 pr-6 bg-zinc-900/90 border border-zinc-700 rounded-lg text-lg text-white focus:outline-none focus:border-red-600 transition"
+                            required
+                            autocomplete="off"
+                        >
+                        <datalist id="movieTitles">
+                            {% for title in movies %}
+                            <option value="{{ title }}">
+                            {% endfor %}
+                        </datalist>
+                    </div>
+                    <button type="submit" id="submitBtn" class="bg-[#E50914] hover:bg-[#b20710] text-white font-bold py-4 px-10 rounded-lg text-xl flex items-center justify-center gap-3 transition transform hover:scale-105 active:scale-95 shadow-lg whitespace-nowrap">
+                        <span id="btnText">Predict Now</span>
+                        <div id="btnLoader" class="loader"></div>
+                    </button>
+                </div>
+            </form>
+
+            <!-- Error Handling -->
+            {% if recommendations and recommendations|length == 0 %}
+            <div class="mt-6 p-4 bg-red-600/20 border border-red-600/50 text-red-100 rounded-xl flex items-center justify-center gap-3 animate-pulse mx-auto max-w-lg">
+                <i class="fa-solid fa-circle-exclamation"></i> Sorry, we couldn't find that movie in our database!
+            </div>
+            {% endif %}
+        </div>
+    </header>
+
+    <!-- Main Content Results -->
+    <main class="relative z-10 px-6 md:px-16 pb-32">
+        
+        <!-- Results display only if recommendations exist -->
+        {% if recommendations and posters %}
+        <div class="max-w-screen-2xl mx-auto">
+            <h3 class="text-2xl md:text-3xl font-bold mb-10 flex items-center justify-center md:justify-start gap-4">
+                <span class="w-1.5 h-10 bg-[#E50914] rounded-full inline-block"></span>
+                Top results for <span class="text-[#E50914] italic">"{{ selected_movie }}"</span>
+            </h3>
+            
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-8 justify-center items-center">
+                {% for name, poster in zip(recommendations, posters) %}
+                <div class="movie-card group mx-auto w-full">
+                    <div class="aspect-[2/3] bg-zinc-900 rounded-xl overflow-hidden relative shadow-2xl border border-zinc-800">
+                        <!-- Real Poster from TMDB API logic -->
+                        <img src="{{ poster }}" alt="{{ name }}" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition duration-500">
+                        
+                        <!-- Overlay on Hover - Premium Netflix Style restored -->
+                        <div class="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 p-5 flex flex-col justify-end">
+                            <h4 class="font-bold text-lg leading-tight mb-2">{{ name }}</h4>
+                            <div class="flex items-center gap-2 mb-4">
+                                <span class="text-green-500 text-xs font-black uppercase">98% Match</span>
+                                <span class="text-gray-300 text-[10px] border border-gray-600 px-1.5 rounded-sm">4K</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <div class="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center hover:bg-gray-200 transition">
+                                    <i class="fa-solid fa-play text-xs ml-0.5"></i>
+                                </div>
+                                <div class="w-10 h-10 rounded-full bg-zinc-700/70 text-white flex items-center justify-center hover:bg-zinc-600 transition border border-white/20">
+                                    <i class="fa-solid fa-plus text-xs"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <!-- Empty State with advanced styling -->
+        <div class="py-32 text-center opacity-20 select-none flex flex-col items-center justify-center">
+            <i class="fa-solid fa-clapperboard text-8xl mb-6 text-zinc-600"></i>
+            <p class="text-2xl font-light tracking-widest uppercase">Search a movie to begin</p>
+        </div>
+        {% endif %}
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-black border-t border-zinc-800 pt-20 pb-16 px-6 md:px-24 text-zinc-500">
+        <div class="max-w-6xl mx-auto">
+            <div class="flex gap-8 mb-10 text-2xl text-zinc-300">
+                <i class="fa-brands fa-facebook hover:text-white cursor-pointer transition"></i>
+                <i class="fa-brands fa-instagram hover:text-white cursor-pointer transition"></i>
+                <i class="fa-brands fa-twitter hover:text-white cursor-pointer transition"></i>
+                <i class="fa-brands fa-youtube hover:text-white cursor-pointer transition"></i>
+            </div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-4 text-xs mb-16">
+                <a href="#" class="hover:underline">Audio Description</a>
+                <a href="#" class="hover:underline">Help Centre</a>
+                <a href="#" class="hover:underline">Gift Cards</a>
+                <a href="#" class="hover:underline">Media Centre</a>
+                <a href="#" class="hover:underline">Investor Relations</a>
+                <a href="#" class="hover:underline">Jobs</a>
+                <a href="#" class="hover:underline">Terms of Use</a>
+                <a href="#" class="hover:underline">Privacy</a>
+                <a href="#" class="hover:underline">Legal Notices</a>
+                <a href="#" class="hover:underline">Cookie Preferences</a>
+                <a href="#" class="hover:underline">Corporate Information</a>
+                <a href="#" class="hover:underline">Contact Us</a>
+            </div>
+            
+            <p class="text-[10px] font-light uppercase tracking-widest text-zinc-600">© 1997-2025 MoviesAI Global, Inc. Educational Research Project.</p>
+        </div>
+    </footer>
+
+    <!-- JS for Visual Effects -->
+    <script>
+        // Navbar scroll behavior
+        window.onscroll = function() {
+            const nav = document.getElementById("navbar");
+            if (document.body.scrollTop > 50 || document.documentElement.scrollTop > 50) {
+                nav.classList.add('nav-scrolled');
+                nav.style.paddingTop = '15px';
+                nav.style.paddingBottom = '15px';
+            } else {
+                nav.classList.remove('nav-scrolled');
+                nav.style.paddingTop = '20px';
+                nav.style.paddingBottom = '20px';
+            }
+        };
+
+        // Handling Predict Now Button State
+        document.getElementById('recommendForm').onsubmit = function() {
+            const btnText = document.getElementById('btnText');
+            const btnLoader = document.getElementById('btnLoader');
+            const submitBtn = document.getElementById('submitBtn');
+            
+            btnText.innerText = "Processing...";
+            btnLoader.style.display = "block";
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = "0.7";
+        };
+
+        // Staggered animation for movie cards
+        document.addEventListener('DOMContentLoaded', () => {
+            const cards = document.querySelectorAll('.movie-card');
+            cards.forEach((card, index) => {
+                setTimeout(() => {
+                    card.style.transition = 'all 0.6s cubic-bezier(0.23, 1, 0.32, 1)';
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, index * 100);
+            });
+        });
+    </script>
+
+</body>
+</html>

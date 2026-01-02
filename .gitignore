@@ -1,0 +1,6 @@
+*.pkl
+ML Model/
+__pycache__/
+.env
+
+\
